@@ -1,0 +1,251 @@
+---
+- hosts: tito-web
+  become: yes
+  become_method: sudo
+  vars:
+    mapsapikey: AIzaSyCrpIQtxT14_s_DcjAQwUa5r1p1IaTO2eQ
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+      - name: Wait for automatic system updates
+        become: true
+        shell: while sudo fuser /var/lib/dpkg/{{ item }} >/dev/null 2>&1; do sleep 1; done;
+        with_items:
+        - lock
+        - lock-frontend
+
+      - name: Install apache package
+        yum:
+          name: httpd
+          state: present
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Install apache package
+        apt:
+          name: apache2
+          state: present
+          #lock_wait: 60
+        when: ansible_facts['os_family'] == "Debian"
+        retries: 3
+
+      - name: Install php package
+        package:
+          name: php
+          state: present
+        retries: 3
+
+      - name: Install php curl package
+        package:
+          name: php-curl
+          state: present
+
+      - name: Install php-sql package
+        package:
+          name: php-mysql
+          state: present
+
+      - name: Install git package
+        package:
+          name: git
+          state: present
+
+      - name: Start service httpd, if not started
+        service:
+          name: httpd
+          state: started
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Start service apache2, if not started
+        service:
+          name: apache2
+          state: started
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Ensure SELinux is disabled
+        lineinfile:
+          path: /etc/selinux/config
+          regexp: '^SELINUX='
+          line: SELINUX=disabled
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Remove index.html so /var/www/html is empty
+        file:
+          path: /var/www/html/index.html
+          state: absent
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Clone tito git repository
+        git:
+          repo: https://github.com/vmeoc/Tito
+          dest: /var/www/html
+          clone: yes
+          update: yes
+          force: yes
+
+      - name: Change Apache default page to index.php
+        copy:
+          dest: "/var/www/html/.htaccess"
+          content: "DirectoryIndex index.php"
+
+      - name: Set API gateway in index.php
+        replace:
+          path: /var/www/html/index.php
+          regexp: 'API_GW'
+          replace: "{{ mapsapikey }}"
+
+      - name: Insert lines in HTTPD configuration file to ensure PHP is enabled and environment variable set
+        blockinfile:
+          path: /etc/httpd/conf/httpd.conf
+          block: |
+            LoadModule php5_module modules/libphp5.so
+            <IfModule env_module>
+               SetEnv TITO-SQL $SQLSERVER
+            </IfModule>
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Install HTML embedded scripting language (Apache 2 module)
+        apt:
+          name: libapache2-mod-php
+          state: present
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Insert lines in PHP.ini configuration file to set default timezone
+        blockinfile:
+          path: /etc/php.ini
+          block: |
+            date.timezone = Europe/London
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Insert lines in PHP.ini configuration file to set default timezone
+        blockinfile:
+          path: /etc/php/7.0/apache2/php.ini
+          block: |
+            date.timezone = Europe/London
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Restart service httpd to pickup httpd.conf and php.ini changes
+        service:
+          name: httpd
+          state: restarted
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Restart service apache2 to pickup httpd.conf and php.ini changes
+        service:
+          name: apache2
+          state: restarted
+        when: ansible_facts['os_family'] == "Debian"
+
+- hosts: tito-db
+  become: yes
+  become_method: sudo
+  gather_facts: true
+  vars:
+    root_db_password: Tito2016
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+      - name: Wait for automatic system updates
+        become: true
+        shell: while sudo fuser /var/lib/dpkg/{{ item }} >/dev/null 2>&1; do sleep 1; done;
+        with_items:
+        - lock
+        - lock-frontend
+
+      - name: update apt packages
+        apt:
+          update_cache: true
+
+      - name: Ensure SELinux is disabled
+        lineinfile:
+          path: /etc/selinux/config
+          regexp: '^SELINUX='
+          line: SELINUX=disabled
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Install MySQL 5.7 repo
+        yum:
+          name: http://dev.mysql.com/get/mysql57-community-release-el7-8.noarch.rpm
+          state: present
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Install MySQL server
+        yum:
+          name: mysql-server
+          state: present
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Start service mysqld
+        service:
+          name: mysqld
+          state: started
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Allow simple MySQL password
+        shell: mysql -u root -p$(cat /var/log/mysqld.log | grep "temporary password" | rev | cut -d " " -f 1 | rev) -e "SET GLOBAL validate_password_policy=LOW;" --connect-expired-password
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Reset the root@localhost password
+        shell: mysql -u root -p$(cat /var/log/mysqld.log | grep "temporary password" | rev | cut -d " " -f 1 | rev) -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ root_db_password }}';" --connect-expired-password
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Set MySQL root password before installing
+        debconf: name='mysql-server' question='mysql-server/root_password' value='{{root_db_password | quote}}' vtype='password'
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Confirm MySQL root password before installing
+        debconf: name='mysql-server' question='mysql-server/root_password_again' value='{{root_db_password | quote}}' vtype='password'
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Install MySQL
+        apt:
+          name: mysql-server
+          state: present
+        retries: 3
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Install MySQL client
+        package:
+          name: mysql
+          state: present
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Configure MySQL client
+        copy:
+          dest: "~/.my.cnf"
+          content: |
+            [mysql]
+            user = 'root'
+            password = '{{ root_db_password }}'
+
+      - name: Install python pip
+        package:
+          name: python-pip
+          state: present
+
+      - name: Install python3 pip
+        package:
+          name: python3-pip
+          state: present
+
+      - name: Install PyMySQL
+        pip:
+          name: PyMySQL
+          state: present
+
+      - name: Create TitoDB database
+        mysql_db:
+          name: TitoDB
+          state: present
+          login_user: root
+          login_password: '{{ root_db_password }}'
+
+      - name: Create DB setup file
+        copy:
+          dest: "/tmp/Tito.sql"
+          content: |
+            CREATE TABLE TitoTable (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, home VARCHAR(50) NOT NULL, work VARCHAR(50) NOT NULL, hour_home_departure VARCHAR(50) NOT NULL, hour_work_departure VARCHAR(50) NOT NULL)
+      - name: Create TitoDB TitoTable
+        mysql_db:
+          name: TitoDB
+          state: import
+          target: /tmp/Tito.sql
+          login_user: root
+          login_password: '{{ root_db_password }}'

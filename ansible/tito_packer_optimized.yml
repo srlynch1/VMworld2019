@@ -1,0 +1,115 @@
+---
+- hosts: tito-web
+  become: yes
+  become_method: sudo
+  vars:
+    mapsapikey: AIzaSyCrpIQtxT14_s_DcjAQwUa5r1p1IaTO2eQ
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+      - name: Wait for automatic system updates
+        become: true
+        shell: while sudo fuser /var/lib/dpkg/{{ item }} >/dev/null 2>&1; do sleep 1; done;
+        with_items:
+        - lock
+        - lock-frontend
+
+      - name: Start service apache2, if not started
+        service:
+          name: apache2
+          state: started
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Ensure SELinux is disabled
+        lineinfile:
+          path: /etc/selinux/config
+          regexp: '^SELINUX='
+          line: SELINUX=disabled
+        when: ansible_facts['os_family'] == "CentOS"
+
+      - name: Remove index.html so /var/www/html is empty
+        file:
+          path: /var/www/html/index.html
+          state: absent
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Clone Tito git repository
+        git:
+          repo: https://github.com/vmeoc/Tito
+          dest: /var/www/html
+          clone: yes
+          update: yes
+          force: yes
+
+      - name: Change Apache default page to index.php
+        copy:
+          dest: "/var/www/html/.htaccess"
+          content: "DirectoryIndex index.php"
+
+      - name: Set API gateway in index.php
+        replace:
+          path: /var/www/html/index.php
+          regexp: 'API_GW'
+          replace: "{{ mapsapikey }}"
+
+      - name: Install HTML embedded scripting language (Apache 2 module)
+        apt:
+          name: libapache2-mod-php
+          state: present
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Insert lines in PHP.ini configuration file to set default timezone
+        blockinfile:
+          path: /etc/php/7.0/apache2/php.ini
+          block: |
+            date.timezone = Europe/London
+        when: ansible_facts['os_family'] == "Debian"
+
+      - name: Restart service apache2 to pickup httpd.conf and php.ini changes
+        service:
+          name: apache2
+          state: restarted
+        when: ansible_facts['os_family'] == "Debian"
+
+- hosts: tito-db
+  become: yes
+  become_method: sudo
+  gather_facts: true
+  vars:
+    root_db_password: Tito2016
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+      - name: Wait for automatic system updates
+        become: true
+        shell: while sudo fuser /var/lib/dpkg/{{ item }} >/dev/null 2>&1; do sleep 1; done;
+        with_items:
+        - lock
+        - lock-frontend
+
+      - name: Configure MySQL client
+        copy:
+          dest: "~/.my.cnf"
+          content: |
+            [mysql]
+            user = 'root'
+            password = '{{ root_db_password }}'
+
+      - name: Create TitoDB database
+        mysql_db:
+          name: TitoDB
+          state: present
+          login_user: root
+          login_password: '{{ root_db_password }}'
+
+      - name: Create DB setup file
+        copy:
+          dest: "/tmp/Tito.sql"
+          content: |
+            CREATE TABLE TitoTable (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, home VARCHAR(50) NOT NULL, work VARCHAR(50) NOT NULL, hour_home_departure VARCHAR(50) NOT NULL, hour_work_departure VARCHAR(50) NOT NULL)
+
+      - name: Create TitoDB TitoTable
+        mysql_db:
+          name: TitoDB
+          state: import
+          target: /tmp/Tito.sql
+          login_user: root
+          login_password: '{{ root_db_password }}'
