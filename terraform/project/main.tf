@@ -2,7 +2,7 @@
 provider "vra" {
   url           = var.url
   refresh_token = var.refresh_token
-
+}
 
 data "vra_zone" "this" {
   count = length(var.zones)
