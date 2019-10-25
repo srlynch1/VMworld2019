@@ -33,10 +33,10 @@ resource "vra_project" "this" {
   description = var.project_desc
 
   #zone_assignments {
-  #  zone_id       = "${vra_zone.zoneAPSE1.id}"
-  #  priority      = 1
-  #  max_instances = 0
-  #}
+    zone_id       = "${vra_zone.zoneAPSE1.id}"
+    priority      = 1
+    max_instances = 0
+  }
 
    zone_assignments {
     zone_id       = "${data.vra_zone.zoneAPSE2.id}"
