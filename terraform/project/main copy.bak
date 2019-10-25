@@ -4,7 +4,6 @@ provider "vra" {
   refresh_token = var.refresh_token
 }
 
-/*
 data "vra_cloud_account_aws" "this" {
   name = var.cloud_account
 }
@@ -19,13 +18,13 @@ data "vra_region" "regionAPSE1" {
   region = "ap-southeast-1"
 }
 
-*/
-
-data "vra_zone" "this" {
-  count = length(var.zones)
-  name          = var.zones[count.index]
+data "vra_zone" "zoneAPSE1" {
+  name = var.zone_apse1
 }
 
+data "vra_zone" "zoneAPSE2" {
+  name = var.zone_apse2
+}
 
 ### Projects
 
@@ -33,17 +32,17 @@ resource "vra_project" "this" {
   name        = var.project_name
   description = var.project_desc
 
-  
-  dynamic zone_assignments {
-    for_each = data.vra_zone.this
-    content {
-      zone_id       = "${zone_assignments.value.id}"
-      priority      = 1
-      max_instances = 0
-      }
+  zone_assignments {
+    zone_id       = "${data.vra_zone.zoneAPSE1.id}"
+    priority      = 1
+    max_instances = 0
+  }
 
-    }
-
+   zone_assignments {
+    zone_id       = "${data.vra_zone.zoneAPSE2.id}"
+    priority      = 1
+    max_instances = 0
+  }
 }
 
 
