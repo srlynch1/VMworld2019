@@ -3,14 +3,7 @@ variable "url" {
 }
 variable "refresh_token" {
 }
-### Config for vRA Provider - Cloud Zone
-#variable "cloud_account" {
-#}
-#variable "region_1" {
-#}
 
-#variable "region_2" {
-#}
 
 variable "zones" {
   type    = list(string)
@@ -23,7 +16,12 @@ variable "project_name" {
 }
 
 variable "project_desc" {
+}
 
+variable "project_admins" {
+}
+
+variable "project_members" {
 }
 
 
