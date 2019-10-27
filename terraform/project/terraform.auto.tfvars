@@ -3,5 +3,7 @@ url="https://api.mgmt.cloud.vmware.com"
 #region_2="ap-southeast-2"
 project_name="testProject"
 project_desc="testProject description here"
+project_admins=["slynch@vmware.com", "tphan@vmware.com"]
+project_members=[]
 #cloud_account="SDDC ANZ AWS"
 zones=["ANZ AWS APSE1","ANZ AWS APSE2"]

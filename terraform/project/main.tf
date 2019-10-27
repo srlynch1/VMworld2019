@@ -13,6 +13,8 @@ data "vra_zone" "this" {
 resource "vra_project" "this" {
   name        = var.project_name
   description = var.project_desc
+  administrators = var.project_admins
+  members = var.project_members
 
   
   dynamic zone_assignments {
