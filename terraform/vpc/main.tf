@@ -156,12 +156,13 @@ output "vpc_private_sg_id" {
   value = "${aws_security_group.vpc_private_sg.id}"
 }
 
-
+/*
 #### VRA Provider - Cloud Account
 provider "vra" {
   url           = var.url
   refresh_token = var.refresh_token
 }
+
 
 resource "vra_cloud_account_aws" "this" {
   name        = "tf-vra-cloud-account-aws"
@@ -185,9 +186,11 @@ data "vra_region" "region_2" {
   cloud_account_id = vra_cloud_account_aws.this.id
   region           = var.region_2
 }
+*/
 
 ### Cloud Zones
 
+/*
 
 data "vra_cloud_account_aws" "this" {
   name = var.cloud_account
@@ -266,26 +269,9 @@ resource "vra_network_profile" "simple" {
   }
 }
 
-### Network - Testing
+*/
 
-### Projects
+### Network
 
-resource "vra_project" "this" {
-  name        = "tf-vra-project"
-  description = "terraform test project"
 
-  zone_assignments {
-    zone_id       = "${vra_zone.zoneAPSE1.id}"
-    priority      = 1
-    max_instances = 0
-  }
-
-   zone_assignments {
-    zone_id       = "${vra_zone.zoneAPSE2.id}"
-    priority      = 1
-    max_instances = 0
-  }
-}
-
-#
 
