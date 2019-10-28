@@ -1,0 +1,31 @@
+{
+  "variables": {
+    "aws_access_key": "",
+    "aws_secret_key": ""
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "access_key": "{{user `aws_access_key`}}",
+      "secret_key": "{{user `aws_secret_key`}}",
+      "region": "ap-southeast-2",
+      "source_ami": "ami-0328aad0f6218c429",
+      "instance_type": "t2.micro",
+      "ssh_username": "ubuntu",
+      "ami_name": "ubuntu1604_tito-db_231019",
+      "subnet_id": "subnet-071604caaea13cf0c"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done",
+        "sudo apt-get update",
+        "echo 'mysql-server mysql-server/root_password password Tito2016' | sudo debconf-set-selections",
+        "echo 'mysql-server mysql-server/root_password_again password Tito2016' | sudo debconf-set-selections",
+        "sudo apt-get install -y python-pip python3-pip python-pymysql python3-pymysql mysql-server"
+      ]
+    }
+  ]
+}

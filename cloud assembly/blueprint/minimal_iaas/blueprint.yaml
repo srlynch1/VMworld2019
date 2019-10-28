@@ -1,0 +1,49 @@
+version: 0.1
+name: Minimal IaaS
+formatVersion: 1
+inputs:
+  image:
+    type: string
+    title: Operating System
+    oneOf:
+      - title: CentOS 7S
+        const: centos7
+      - title: Ubuntu 16.04 LTS
+        const: ubuntu1604
+  size:
+    type: string
+    title: Size
+    enum:
+      - tiny
+      - small
+      - medium
+      - large
+  platform:
+    type: string
+    title: Platform
+    oneOf:
+      - title: Amazon Web Services
+        const: 'platform:aws'
+      - title: vSphere
+        const: 'platform:vsphere'
+  region:
+    type: string
+    title: Region
+    oneOf:
+      - title: Singapore
+        const: 'region:singapore'
+      - title: Sydney
+        const: 'region:sydney'
+resources:
+  Cloud_Machine_1:
+    type: Cloud.Machine
+    properties:
+      image: '${input.image}'
+      flavor: '${input.size}'
+      constraints:
+        - tag: '${input.platform}'
+        - tag: '${input.region}'
+  Cloud_Network_1:
+    type: Cloud.Network
+    properties:
+      networkType: existing

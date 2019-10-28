@@ -1,0 +1,163 @@
+formatVersion: 1
+inputs:
+  application:
+    type: string
+    default: tito
+    readOnly: true
+  environment:
+    type: string
+    title: Environment
+    oneOf:
+      - title: Development
+        const: dev
+      - title: Test
+        const: test
+      - title: User Acceptance Testing
+        const: uat
+      - title: Production
+        const: prod
+    default: test
+  platform:
+    type: string
+    title: Platform
+    oneOf:
+      - title: Amazon Web Services
+        const: 'platform:aws'
+      - title: vSphere
+        const: 'platform:vsphere'
+    default: 'platform:aws'
+  region:
+    type: string
+    title: Region
+    oneOf:
+      - title: Singapore
+        const: 'region:singapore'
+      - title: Sydney
+        const: 'region:sydney'
+    default: 'region:sydney'
+  maps_api_key:
+    type: string
+    description: Google Maps API Key
+    default: AIzaSyCrpIQtxT14_s_DcjAQwUa5r1p1IaTO2eQ
+  fe_unit:
+    type: integer
+    default: 1
+  wavefront_proxy:
+    type: string
+    default: ec2-54-153-128-0.ap-southeast-2.compute.amazonaws.com
+  ssh_key:
+    type: string
+    description: Using SociaLab SSH Key (Required for Ansible)
+    readOnly: true
+    default: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDKOk8QPRN3WmUnbWu0csX47B/0ga3IgwBirsVmoDr6pfcIgYoTVAMLhg4i9/OjyyvBJcBJuXH3FJnM06mPICUPyblXmXhJ9YnTjE9987s4Z5OFish4y8LSE97pR4lFv6z5l2tT+0RyjIXWyo4voKOpE//voz1/V/BygNWvy0Xs+zzSkDBqx9Gy86dZ24+zvT1501R/phRuETor/9jyUOe+tAnZCB6yt7RUqvH5ONuOU4Gnn9DQR1lgowmmDPr+S5REEccjxhPbby+Ap0lQsPPrXF9vp0LwNiiv4hp1Bbel2rxQF617vfm1sT2NEcbkpZEiC7hP3eI5YoX1JGcGxvpd root@localhost
+resources:
+  Tito-Web:
+    type: Cloud.Ansible
+    properties:
+      host: '${resource.Web.*}'
+      osType: linux
+      account: SociaLab Ansible OSS
+      username: socialab
+      privateKeyFile: /home/socialab/socialab_id_rsa.pem
+      groups:
+        - tito-web
+      playbooks:
+        provision:
+          - /home/socialab/tito_packer_optimized.yml
+      count: '${input.fe_unit}'
+  Tito-DB:
+    type: Cloud.Ansible
+    properties:
+      host: '${resource.DB.*}'
+      osType: linux
+      account: SociaLab Ansible OSS
+      username: socialab
+      privateKeyFile: /home/socialab/socialab_id_rsa.pem
+      groups:
+        - tito-db
+      playbooks:
+        provision:
+          - /home/socialab/tito_packer_optimized.yml
+  Cloud_LoadBalancer_1:
+    type: Cloud.LoadBalancer
+    properties:
+      name: TITOLoadBalancer
+      count: 1
+      resourceGroupName: ''
+      routes:
+        - instancePort: 80
+          instanceProtocol: HTTP
+          protocol: HTTP
+          port: 80
+      instances: '${resource.Web[*].id}'
+      internetFacing: true
+      network: '${resource["Net-Web"].id}'
+  Web:
+    type: Cloud.Machine
+    properties:
+      count: '${input.fe_unit}'
+      image: ubuntu1604_tito-web
+      flavor: medium
+      cloudConfig: |
+        #cloud-config
+        output: {all: '| tee -a /var/log/cloud-init-output.log'}
+        users:
+        - name: socialab #username to be created
+          ssh-authorized-keys:
+          - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDZ6c7SN6L7DuHO34SUpJAsisy9PJ1TkhiHCuJt3VzKOF0kZPrvDdV7pwU14pFR4jOopcH9Ukajc/BSGiuXuuh4wISKu/p22fH7uzThHav15YCONsgH3FNXCB3UIxkMU+RUOABMrplakoAHrNc2RDaEspwmyGbns6WI6RlNcILr//U6TdXKoht4k6x5S5FKe7GiDBXMePQwfknqWAroVZQiRSCXe0kYAz+Gh518U9IX0BeV5tjxL05QGp7HMCnggTCLA/bGc6rjK97Ujcjcs7MJU8LX0zEYxQeI/uCQzhKFvR3c1MKefjndxYNk6qSOTHyO1uj4/K0SHF62on2dpjZf
+          sudo: ['ALL=(ALL) NOPASSWD:ALL']
+          groups: sudo #groups user to be added too
+          shell: /bin/bash
+        runcmd:
+        - sudo echo SQLSERVER='${resource.DB.networks[0].address}' >> /etc/environment
+      constraints:
+        - tag: '${input.platform}'
+        - tag: '${input.region}'
+      name: tito-web
+      cloudConfigSettings:
+        phoneHomeShouldWait: true
+        phoneHomeFailOnTimeout: true
+        phoneHomeTimeoutSeconds: 600
+      networks:
+        - network: '${resource["Net-Web"].id}'
+          name: '${resource["Net-Web"].name}'
+  DB:
+    type: Cloud.Machine
+    properties:
+      image: ubuntu1604_tito-db
+      flavor: medium
+      cloudConfig: |
+        #cloud-config
+        output: {all: '| tee -a /var/log/cloud-init-output.log'}
+        users:
+        - name: socialab #username to be created
+          ssh-authorized-keys:
+          - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDZ6c7SN6L7DuHO34SUpJAsisy9PJ1TkhiHCuJt3VzKOF0kZPrvDdV7pwU14pFR4jOopcH9Ukajc/BSGiuXuuh4wISKu/p22fH7uzThHav15YCONsgH3FNXCB3UIxkMU+RUOABMrplakoAHrNc2RDaEspwmyGbns6WI6RlNcILr//U6TdXKoht4k6x5S5FKe7GiDBXMePQwfknqWAroVZQiRSCXe0kYAz+Gh518U9IX0BeV5tjxL05QGp7HMCnggTCLA/bGc6rjK97Ujcjcs7MJU8LX0zEYxQeI/uCQzhKFvR3c1MKefjndxYNk6qSOTHyO1uj4/K0SHF62on2dpjZf
+          sudo: ['ALL=(ALL) NOPASSWD:ALL']
+          groups: sudo #groups user to be added too
+          shell: /bin/bash
+      constraints:
+        - tag: '${input.platform}'
+        - tag: '${input.region}'
+      name: tito-db
+      cloudConfigSettings:
+        phoneHomeShouldWait: true
+        phoneHomeFailOnTimeout: true
+        phoneHomeTimeoutSeconds: 600
+      networks:
+        - network: '${resource["Net-DB"].id}'
+          name: '${resource["Net-DB"].name}'
+  Net-Web:
+    type: Cloud.Network
+    name: net-tito-web
+    properties:
+      networkType: existing
+      constraints:
+        - tag: 'function:web'
+  Net-DB:
+    type: Cloud.Network
+    name: net-tito-db
+    properties:
+      networkType: existing
+      constraints:
+        - tag: 'function:database'
