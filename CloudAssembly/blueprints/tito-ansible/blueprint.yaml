@@ -1,3 +1,5 @@
+version: 1.0
+name: TiTo-Ansible
 formatVersion: 1
 inputs:
   application:
