@@ -1,0 +1,29 @@
+---
+exportVersion: "1"
+exportId: "8a76a0ac6c29e15e016c3c0219181850"
+name: "Project Git Repo Blueprints"
+runtime: "python"
+entrypoint: "handler"
+inputs:
+  name: "GitHub CS"
+  type: "com.github.saas"
+  typeId: "com.github"
+  baseUri: "https://api.mgmt.cloud.vmware.com/"
+  syncEnabled: "true"
+  configBlueprint:
+    path: "CloudAssembly/blueprints"
+    branch: "master"
+    repository: "srlynch1/VMworld2019"
+    contentType: "BLUEPRINT"
+    integrationId: "18242fc2e749b27559604bbee3763"
+  vRAproject_name: "tfTest"
+  configureBlueprints: "true"
+timeoutSeconds: 180
+deploymentTimeoutSeconds: 600
+dependencies: "requests"
+actionType: "SCRIPT"
+configuration:
+  const-providers:
+  - "aws"
+  const_azure-system_managed_identity: false
+memoryInMB: 150

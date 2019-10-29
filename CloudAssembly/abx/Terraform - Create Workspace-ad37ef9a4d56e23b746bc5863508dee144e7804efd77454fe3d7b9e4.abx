@@ -1,0 +1,24 @@
+---
+exportVersion: "1"
+exportId: "8a76a8c26d31695e016d4d41293f1ab1"
+name: "Terraform - Create Workspace"
+runtime: "python"
+entrypoint: "handler"
+inputs:
+  baseURI: "https://app.terraform.io/api/v2"
+  repo-id: "srlynch1/VMworld2019"
+  tfOrgName: "vmworld"
+  tfVersion: "0.12.9"
+  repo-tokenId: "ot-cL4Xc9Y6Q6QRqyqZ"
+  repo-githubId: "ghain-YvYbMVY5K87akuFc"
+  repo-workingDir: "/terraform/project"
+  vRAproject_name: "testProject2"
+timeoutSeconds: 180
+deploymentTimeoutSeconds: 600
+dependencies: "requests"
+actionType: "SCRIPT"
+configuration:
+  const-providers:
+  - "aws"
+  const_azure-system_managed_identity: false
+memoryInMB: 150

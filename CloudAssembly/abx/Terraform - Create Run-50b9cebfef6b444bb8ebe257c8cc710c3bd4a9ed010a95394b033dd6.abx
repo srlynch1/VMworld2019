@@ -1,0 +1,20 @@
+---
+exportVersion: "1"
+exportId: "8a768a5d6cf0f57f016d29d41c5e385e"
+name: "Terraform - Create Run"
+runtime: "python"
+entrypoint: "handler"
+inputs:
+  baseUri: "https://app.terraform.io/api"
+  tfOrgName: "VMworld"
+  tfAPIVersion: "v2"
+  vRAproject_name: "testProject"
+timeoutSeconds: 500
+deploymentTimeoutSeconds: 600
+dependencies: "requests"
+actionType: "SCRIPT"
+configuration:
+  const-providers:
+  - "aws"
+  const_azure-system_managed_identity: false
+memoryInMB: 200

@@ -1,0 +1,17 @@
+---
+version: 1
+flow:
+  flow_start:
+    next: createWorkspace
+  createWorkspace:
+    action: Terraform - Create Workspace
+    next: updateVars
+  updateVars:
+    action: Terraform - Project Create Variables
+    next: createRun
+  createRun:
+    action: Terraform - Create Run
+    next: syncContent
+  syncContent:
+    action: Project Git Repo Blueprints
+    next: flow_end

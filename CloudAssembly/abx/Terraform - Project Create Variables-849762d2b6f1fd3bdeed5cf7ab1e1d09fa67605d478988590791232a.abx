@@ -1,0 +1,33 @@
+---
+exportVersion: "1"
+exportId: "8a7695d66df83f0d016dfc54fe590867"
+name: "Terraform - Project Create Variables"
+runtime: "python"
+entrypoint: "handler"
+inputs:
+  aws:
+    enable: true
+  gcp:
+    enable: false
+  vmc:
+    enable: false
+  azure:
+    enable: false
+  baseUri: "https://app.terraform.io/api"
+  vsphere:
+    vsphere: false
+  tfOrgName: "vmworld"
+  tfAPIVersion: "v2"
+  vRAproject_desc: "test Description"
+  vRAproject_name: "ProjectNameHere"
+  vRAproject_admins: "\"\""
+  vRAproject_members: "\"\""
+timeoutSeconds: 180
+deploymentTimeoutSeconds: 600
+dependencies: "requests"
+actionType: "SCRIPT"
+configuration:
+  const-providers:
+  - "aws"
+  const_azure-system_managed_identity: false
+memoryInMB: 150

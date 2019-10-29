@@ -1,0 +1,21 @@
+---
+exportVersion: "1"
+exportId: "8a7695d66df83f0d016dfcc8639d0900"
+name: "vRA Project Onboarding"
+inputs:
+  aws:
+    enable: true
+  gcp:
+    enable: false
+  vmc:
+    enable: false
+  azure:
+    enable: true
+  vsphere:
+    enable: false
+  vRAproject_name: "\"\""
+  vRAproject_admins: "\"slynch@vmware.com\", \"tphan@vmware.com\""
+  vRAproject_members: "\"\""
+timeoutSeconds: 600
+actionType: "FLOW"
+memoryInMB: 150
