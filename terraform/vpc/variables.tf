@@ -52,30 +52,3 @@ variable "vpc_access_from_ip_range" {
   description = "Private CIDR for internally accessible subnet"
   default= "0.0.0.0/0"
 }
-
-
-### Config for vRA Provider -  Auth/Cloud Accounts
-
-variable "url" {
-}
-variable "refresh_token" {
-}
-### Config for vRA Provider - Cloud Zone
-variable "cloud_account" {
-}
-variable "region_1" {
-}
-
-variable "region_2" {
-}
-### Config for vRA Provider - Flavor Mapping
-
-### Config for vRA Provider - Image Mapping
-
-### Config for vRA Provider - Project
-
-variable "zone" {
-
-}
-
-
