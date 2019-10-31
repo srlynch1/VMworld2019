@@ -1,4 +1,4 @@
-version: 1.0
+version: 1.1
 name: TiTo-Ansible
 formatVersion: 1
 inputs:
@@ -17,7 +17,7 @@ inputs:
       - title: User Acceptance Testing
         const: uat
       - title: Production
-        const: prod
+        const: production
     default: test
   platform:
     type: string
@@ -28,15 +28,6 @@ inputs:
       - title: vSphere
         const: 'platform:vsphere'
     default: 'platform:aws'
-  region:
-    type: string
-    title: Region
-    oneOf:
-      - title: Singapore
-        const: 'region:singapore'
-      - title: Sydney
-        const: 'region:sydney'
-    default: 'region:sydney'
   maps_api_key:
     type: string
     description: Google Maps API Key
@@ -46,7 +37,7 @@ inputs:
     default: 1
   wavefront_proxy:
     type: string
-    default: ec2-54-153-128-0.ap-southeast-2.compute.amazonaws.com
+    default: Commuter-tito-02439-1370868404.us-east-1.elb.amazonaws.com
   ssh_key:
     type: string
     description: Using SociaLab SSH Key (Required for Ansible)
@@ -91,9 +82,9 @@ resources:
           instanceProtocol: HTTP
           protocol: HTTP
           port: 80
+      network: '${resource.Cloud_Network_1.name}'
       instances: '${resource.Web[*].id}'
       internetFacing: true
-      network: '${resource["Net-Web"].id}'
   Web:
     type: Cloud.Machine
     properties:
@@ -112,17 +103,35 @@ resources:
           shell: /bin/bash
         runcmd:
         - sudo echo SQLSERVER='${resource.DB.networks[0].address}' >> /etc/environment
+         # Wavefront config
+         - 'sudo bash -c "$(curl -sL https://wavefront.com/install)" -- install --agent --proxy-address ${input.wavefront_proxy} --proxy-port 2878'
+         - [bash, /etc/telegraf/appendTags.sh]
+         - sudo systemctl restart telegraf        
+        write_files:
+         - path: /etc/telegraf/telegraf.d/apache.conf
+           permissions: '0644'
+           content: |
+            [[inputs.apache]]
+            urls = ["http://0.0.0.0/server-status?auto"]
+         - path: /etc/telegraf/appendTags.sh
+           permissions: '0644'
+           content: |
+            #!/bin/sh
+            sed '/\[global_tags\]/r'<(
+            echo 'app="${input.application}"'
+            echo 'environment="${input.environment}"'
+            ) -i -- /etc/telegraf/telegraf.conf
       constraints:
         - tag: '${input.platform}'
-        - tag: '${input.region}'
+      networks:
+        - name: '${resource.Cloud_Network_1.name}'
+          network: '${resource.Cloud_Network_1.id}'
+          assignPublicIpAddress: true
       name: tito-web
       cloudConfigSettings:
         phoneHomeShouldWait: true
         phoneHomeFailOnTimeout: true
         phoneHomeTimeoutSeconds: 600
-      networks:
-        - network: '${resource["Net-Web"].id}'
-          name: '${resource["Net-Web"].name}'
   DB:
     type: Cloud.Machine
     properties:
@@ -137,29 +146,39 @@ resources:
           - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDZ6c7SN6L7DuHO34SUpJAsisy9PJ1TkhiHCuJt3VzKOF0kZPrvDdV7pwU14pFR4jOopcH9Ukajc/BSGiuXuuh4wISKu/p22fH7uzThHav15YCONsgH3FNXCB3UIxkMU+RUOABMrplakoAHrNc2RDaEspwmyGbns6WI6RlNcILr//U6TdXKoht4k6x5S5FKe7GiDBXMePQwfknqWAroVZQiRSCXe0kYAz+Gh518U9IX0BeV5tjxL05QGp7HMCnggTCLA/bGc6rjK97Ujcjcs7MJU8LX0zEYxQeI/uCQzhKFvR3c1MKefjndxYNk6qSOTHyO1uj4/K0SHF62on2dpjZf
           sudo: ['ALL=(ALL) NOPASSWD:ALL']
           groups: sudo #groups user to be added too
-          shell: /bin/bash
+          shell: /bin/         # Wavefront config
+        runcmd:
+         - 'sudo bash -c "$(curl -sL https://wavefront.com/install)" -- install --agent --proxy-address ${input.wavefront_proxy} --proxy-port 2878'
+         - [bash, /etc/telegraf/appendTags.sh]
+         - sudo systemctl restart telegraf        
+        write_files:
+         - path: /etc/telegraf/telegraf.d/apache.conf
+           permissions: '0644'
+           content: |
+            [[inputs.apache]]
+            urls = ["http://0.0.0.0/server-status?auto"]
+         - path: /etc/telegraf/appendTags.sh
+           permissions: '0644'
+           content: |
+            #!/bin/sh
+            sed '/\[global_tags\]/r'<(
+            echo 'app="${input.application}"'
+            echo 'environment="${input.environment}"'
+            ) -i -- /etc/telegraf/telegraf.conf   
       constraints:
         - tag: '${input.platform}'
-        - tag: '${input.region}'
+      networks:
+        - name: '${resource.Cloud_Network_1.name}'
+          network: '${resource.Cloud_Network_1.id}'
       name: tito-db
       cloudConfigSettings:
         phoneHomeShouldWait: true
         phoneHomeFailOnTimeout: true
         phoneHomeTimeoutSeconds: 600
-      networks:
-        - network: '${resource["Net-DB"].id}'
-          name: '${resource["Net-DB"].name}'
-  Net-Web:
+  Cloud_Network_1:
     type: Cloud.Network
-    name: net-tito-web
+    name: tito-net
     properties:
       networkType: existing
       constraints:
-        - tag: 'function:web'
-  Net-DB:
-    type: Cloud.Network
-    name: net-tito-db
-    properties:
-      networkType: existing
-      constraints:
-        - tag: 'function:database'
+        - tag: 'function:management'
