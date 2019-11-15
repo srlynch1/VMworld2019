@@ -1,3 +1,8 @@
+module "vra" {
+  source  = "app.terraform.io/vmworld/vra/provider"
+  version = "0.1.3"
+}
+
 #### VRA Provider - API and Token
 provider "vra" {
   url           = var.url
