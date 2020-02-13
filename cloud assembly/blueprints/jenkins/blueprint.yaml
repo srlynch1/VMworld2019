@@ -1,0 +1,90 @@
+version: 1.1
+name: bp-tito-jenkins
+formatVersion: 1
+inputs:
+  application:
+    type: string
+    default: tito
+    readOnly: true
+  environment:
+    type: string
+    description: App Environment
+    default: production
+    enum:
+      - dev
+      - test
+      - production
+  cloud_target:
+    type: string
+    description: Select target cloud
+    enum:
+      - 'platform:aws'
+      - 'platform:azure'
+      - 'platform:gcp'
+      - 'platform:vsphere'
+  azureresourcegrp:
+    type: string
+    description: Azure Resource Group
+    default: ''
+    enum:
+      - ''
+  SSHkey:
+    type: string
+    description: VM SSH Key
+    default: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDC2sbYtHu65GhgEYk8kUCzCFBWlKM24hMiZwcwJy0mws9KwsCTEEH+aOlt0BvMcYchhV5I2Bxi3nS05vSXMZycoSG8t6Cw0Cw2IYHYNYzl8XCQ5QUtFDXoEK1eGEQTeXissTkR15Fk2CzBYXoGNUKe7mt6TQGKMpwXwNDZe2ZlJXRGsiTgLCdLehYUS+qIIOirQqD2VjBPVfp1ckCztgIydiQoZOilMAQBnJ6KGMr4DiuF8zevgFl4OcFDm7eeuP9cOSYXRtCyAtrB5xvYNGcf+AiMz7yun/HLwMkXab8Nzup1I+90GVtouMddpSp3gZyPpC7CVeToCebhe+EGUjzR riazm@riazm-a01.vmware.com
+resources:
+  Public_Cloud_Network:
+    type: Cloud.Network
+    properties:
+      name: PublicCloudNetwork
+      networkType: existing
+      constraints:
+        - tag: 'function:public'
+  machine:
+    type: Cloud.Machine
+    properties:
+      image: ubuntu1604
+      flavor: medium
+      remoteAccess:
+        username: ubuntu
+        authentication: publicPrivateKey
+        sshKey: '${input.SSHkey}'
+      resourceGroupName: '${input.azureresourcegrp}'
+      constraints:
+        - tag: '${input.cloud_target}'
+        - tag: 'region:sydney'
+      cloudConfig: |
+        #cloud-config
+        users:
+        - name: ubuntu
+          ssh-authorized-keys:
+            - ${input.SSHkey}
+          sudo: ['ALL=(ALL) NOPASSWD:ALL']
+          groups: sudo
+          shell: /bin/bash
+        runcmd:
+        - USER='ubuntu'
+        - PASS='VMware1!'
+        - echo $USER:$PASS | /usr/sbin/chpasswd
+        - sed -i "s/PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+        - sed -i "s/#PasswordAuthentication yes/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+        - sed -i -e '$aAllowUsers ubuntu' /etc/ssh/sshd_config
+        - service ssh reload
+        - wget -q -O - https://jenkins-ci.org/debian/jenkins-ci.org.key | apt-key add -
+        - sh -c 'echo deb https://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+        - apt-get update
+        - apt-get install openjdk-8-jdk -y
+        - apt-get install jenkins -y
+        - service jenkins restart
+        - cat "/var/lib/jenkins/secrets/initialAdminPassword"
+      networks:
+        - name: '${resource.Public_Cloud_Network.name}'
+          network: '${resource.Public_Cloud_Network.id}'
+          securityGroups:
+            - '${resource.Cloud_SecurityGroup_1.id}'
+  Cloud_SecurityGroup_1:
+    type: Cloud.SecurityGroup
+    properties:
+      constraints:
+        - tag: 'app:jenkins'
+      securityGroupType: existing
