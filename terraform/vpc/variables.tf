@@ -11,6 +11,9 @@ variable "aws_access_key_id" {
 
 variable "aws_secret_access_key" {
   description = "AWS secret access key"
+
+variable "aws_session_token" {
+  description = "aws temporary session token"
 }
 
 variable "availability_zone" {
